@@ -122,6 +122,19 @@ type Summary = {
 };
 
 /**
+ * Merges two ply files by partitioning the space and copying splats
+ * from the input ply that has more splats in a given partition.
+ */
+type Merge = {
+    /** Action type identifier. */
+    kind: 'merge';
+    /** Name of the ply-file that shall be merged in */
+    filename: string;
+    /** Partition size - each partition is an AABB box with this side-length. */
+    value: number;
+}
+
+/**
  * A processing action to apply to splat data.
  *
  * Actions can transform, filter, or analyze the data:
@@ -135,8 +148,9 @@ type Summary = {
  * - `filterSphere` - Keep splats within a sphere
  * - `lod` - Assign LOD level to all splats
  * - `summary` - Print statistical summary to logger
+ * - `merge` - Merge two ply files
  */
-type ProcessAction = Translate | Rotate | Scale | FilterNaN | FilterByValue | FilterBands | FilterBox | FilterSphere | Param | Lod | Summary;
+type ProcessAction = Translate | Rotate | Scale | FilterNaN | FilterByValue | FilterBands | FilterBox | FilterSphere | Param | Lod | Summary | Merge;
 
 const shNames = new Array(45).fill('').map((_, i) => `f_rest_${i}`);
 
@@ -339,6 +353,9 @@ const processDataTable = (dataTable: DataTable, processActions: ProcessAction[])
                 logger.output(markdown);
                 break;
             }
+            case 'merge': {
+                console.log('Valium for the compiler...');
+            }
         }
     }
 
@@ -358,5 +375,6 @@ export {
     type FilterSphere,
     type Param,
     type Lod,
-    type Summary
+    type Summary,
+    type Merge
 };

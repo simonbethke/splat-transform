@@ -95,7 +95,8 @@ const parseArguments = async () => {
             'filter-sphere': { type: 'string', short: 'S', multiple: true },
             params: { type: 'string', short: 'p', multiple: true },
             lod: { type: 'string', short: 'l', multiple: true },
-            summary: { type: 'boolean', short: 'm', multiple: true }
+            summary: { type: 'boolean', short: 'm', multiple: true },
+            merge: { type: 'string', short: 'M', multiple: true }
         }
     });
 
@@ -297,6 +298,14 @@ const parseArguments = async () => {
                         kind: 'summary'
                     });
                     break;
+                case 'merge':
+                    current.processActions.push({
+                        kind: 'merge',
+                        filename: t.value,
+                        value: 1
+                    });
+                    break;
+
             }
         }
     }
@@ -334,6 +343,7 @@ ACTIONS (can be repeated, in any order)
     -p, --params           <key=val,...>    Pass parameters to .mjs generator script
     -l, --lod              <n>              Specify the level of detail, n >= 0
     -m, --summary                           Print per-column statistics to stdout
+    -M, --merge            <filename>       Merge the given file into the current
 
 GLOBAL OPTIONS
     -h, --help                              Show this help and exit

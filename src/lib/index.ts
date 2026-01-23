@@ -26,7 +26,8 @@ export type {
     FilterSphere,
     Param as ProcessParam,
     Lod,
-    Summary
+    Summary,
+    Merge
 } from './process';
 
 // File system abstractions
