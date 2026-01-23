@@ -20,6 +20,7 @@ import {
     type Options as LibOptions,
     logger
 } from '../lib/index';
+import { xorCombine } from '../lib/data-table/xor-combine';
 
 /**
  * CLI-specific options extending library options.
@@ -515,7 +516,7 @@ const main = async () => {
 
         // combine inputs into a single output dataTable
         const dataTable = nonEnvDataTables.length > 0 && processDataTable(
-            combine(nonEnvDataTables),
+            xorCombine(nonEnvDataTables),
             outputArg.processActions
         );
 

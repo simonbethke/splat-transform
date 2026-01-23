@@ -1,4 +1,53 @@
-import { Column, DataTable, TypedArray } from './data-table';
+import { Column, DataTable, Row, TypedArray } from './data-table';
+import { computeSummary } from './summary';
+
+
+class BucketIndexer {
+    private bucketSize: number;
+    private ranges = {
+        x: {
+            min: Number.MAX_VALUE,
+            max: Number.MIN_VALUE
+        },
+        y: {
+            min: Number.MAX_VALUE,
+            max: Number.MIN_VALUE
+        },
+        z: {
+            min: Number.MAX_VALUE,
+            max: Number.MIN_VALUE
+        }
+    };
+
+    private bucketCount = {
+        x: 0,
+        y: 0,
+        z: 0
+    };
+
+    constructor(dataTables: DataTable[], bucketSize: number) {
+        dataTables.forEach((table) => {
+            const stats = computeSummary(table);
+            this.ranges.x.min = Math.min(this.ranges.x.min, stats.columns.x.min);
+            this.ranges.x.max = Math.min(this.ranges.x.max, stats.columns.x.max);
+            this.ranges.y.min = Math.min(this.ranges.y.min, stats.columns.y.min);
+            this.ranges.y.max = Math.min(this.ranges.y.max, stats.columns.y.max);
+            this.ranges.z.min = Math.min(this.ranges.z.min, stats.columns.z.min);
+            this.ranges.z.max = Math.min(this.ranges.z.max, stats.columns.z.max);
+        });
+
+        this.bucketSize = bucketSize;
+        this.bucketCount.x = Math.ceil((this.ranges.x.max - this.ranges.x.min) / bucketSize);
+        this.bucketCount.y = Math.ceil((this.ranges.y.max - this.ranges.y.min) / bucketSize);
+        this.bucketCount.z = Math.ceil((this.ranges.z.max - this.ranges.z.min) / bucketSize);
+    }
+
+    findIndex(pos: Row): number {
+        return Math.floor((pos.x - this.ranges.x.min) / this.bucketSize) +
+            Math.floor((pos.y - this.ranges.y.min) / this.bucketSize) * this.bucketCount.x +
+            Math.floor((pos.z - this.ranges.z.min) / this.bucketSize) * this.bucketCount.x * this.bucketCount.y;
+    }
+}
 
 /**
  * Combines multiple DataTables into a single DataTable.
@@ -16,7 +65,7 @@ import { Column, DataTable, TypedArray } from './data-table';
  * console.log(combined.numRows); // tableA.numRows + tableB.numRows + tableC.numRows
  * ```
  */
-const mergeCombine = (dataTables: DataTable[]) : DataTable => {
+const xorCombine = (dataTables: DataTable[]) : DataTable => {
     if (dataTables.length === 1) {
         // nothing to combine
         return dataTables[0];
@@ -43,23 +92,16 @@ const mergeCombine = (dataTables: DataTable[]) : DataTable => {
         }
     }
 
-    const bucketSize = 1;
-    type BucketIndex = {x: number, y: number, z: number};
+    const indexer = new BucketIndexer(dataTables, 1);
 
     // tableBuckets holds one map per table that counts the splats per bucket
-    const tableBuckets: Map<BucketIndex, number>[] =
+    const tableBuckets: Map<number, number>[] =
         dataTables.map((table) => {
-            const buckets = new Map<BucketIndex, number>();
-            let row;
+            const buckets = new Map<number, number>();
             let bIdx;
             let current;
             for (let r = 0; r < table.numRows; r++) {
-                row = table.getRow(r);
-                bIdx = {
-                    x: Math.floor(row.x / bucketSize),
-                    y: Math.floor(row.y / bucketSize),
-                    z: Math.floor(row.z / bucketSize)
-                };
+                bIdx = indexer.findIndex(table.getRow(r));
                 current = buckets.get(bIdx) ?? 0;
                 buckets.set(bIdx, current + 1);
             }
@@ -67,13 +109,13 @@ const mergeCombine = (dataTables: DataTable[]) : DataTable => {
         });
 
     // bucketTables holds the table-index of the table with the most splats in this bucket
-    const bucketTables: Map<BucketIndex, number> =
-        tableBuckets.reduce((prev, current) => {
+    const bucketTables: Map<number, number> =
+        tableBuckets.reduce((prev, current, tIdx) => {
             Array.from(current.entries()).forEach(([bIdx, count]) => {
-                if (count > (prev.get(bIdx) ?? 0)) prev.set(bIdx, count);
+                if (count > (prev.get(bIdx) ?? 0)) prev.set(bIdx, tIdx);
             });
             return prev;
-        }, new Map<BucketIndex, number>());
+        }, new Map<number, number>());
 
     // count total number of rows
     const totalRows = Array.from(bucketTables.entries()).reduce((prev, [bIdx, tIdx]) => prev + tableBuckets[tIdx].get(bIdx), 0);
@@ -94,11 +136,7 @@ const mergeCombine = (dataTables: DataTable[]) : DataTable => {
 
         for (let r = 0; r < table.numRows; r++) {
             row = table.getRow(r);
-            bIdx = {
-                x: Math.floor(row.x / bucketSize),
-                y: Math.floor(row.y / bucketSize),
-                z: Math.floor(row.z / bucketSize)
-            };
+            bIdx = indexer.findIndex(row);
             if (bucketTables.get(bIdx) === i) {
                 result.setRow(rowIndex++, row);
             }
@@ -109,4 +147,4 @@ const mergeCombine = (dataTables: DataTable[]) : DataTable => {
     return result;
 };
 
-export { mergeCombine };
+export { xorCombine };
